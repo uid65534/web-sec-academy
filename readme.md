@@ -1,0 +1,1 @@
+Scripts & notes written in various languages to solve labs at PortSwigger's [Web Security Academy](https://portswigger.net/web-security)
