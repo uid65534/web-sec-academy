@@ -41,11 +41,7 @@ class Client:
     async def __aexit__(self, *args):
         await self._session.close()
 
-    """
-    Obtains a CSRF token from the login page.
-    We can reuse this token for all requests
-    as the CSRF token is static for the session.
-    """
+    """ Obtains a CSRF token from the login page. """
     async def get_csrf(self):
         async with await self._session.get('/login') as res:
             if res.status != 200:
@@ -56,6 +52,7 @@ class Client:
                 raise Exception(f'Failed to find /login CSRF token.')
             return csrf_tag.attrs['value']
 
+    """ Logs in to the lab. """
     async def login(self, username, password):
         if not self._csrf:
             self._csrf = await self.get_csrf()
@@ -69,6 +66,7 @@ class Client:
                 raise Exception('Failed to find CSRF tag')
             self._csrf = csrf_tag.attrs['value']
 
+    """ Retrieves the user's current store credit amount. """
     async def get_credit(self):
         async with await self._session.get('/my-account') as res:
             if res.status != 200:
@@ -83,12 +81,14 @@ class Client:
                 raise Exception('Failed to find credit on /my-account page')
             return float(credit_text[(i+1):])
 
+    """ Adds the specified product ID and quantity to the user's cart. """
     async def add_products(self, product_id, quantity):
         payload = { 'productId': product_id, 'quantity': quantity, 'redir': 'CART' }
         async with await self._session.post('/cart', data=payload) as res:
             if res.status != 200:
                 raise Exception(f'Failed to post /cart: {res.status} {res.reason}')
 
+    """ Applies the specified coupon to the user's cart. """
     async def apply_coupon(self, coupon):
         if not self._csrf:
             self._csrf = await self.get_csrf()
@@ -98,13 +98,15 @@ class Client:
                 body = res.content.read_nowait().decode('utf8')
                 raise Exception(f'Failed to post /cart/coupon: {res.status} {res.reason} {body}')
 
-    async def purchase(self):
+    """ Checks out the user's cart. """
+    async def checkout(self):
         payload = { 'csrf': self._csrf }
         res = await self._session.post('/cart/checkout', data=payload)
         if res.status != 200:
             raise Exception(f'Failed to post /cart/checkout: {res.status} {res.reason}')
         return res
 
+    """ Redeems the specified gift card. """
     async def redeem_gift_card(self, card: str):
         payload = { 'csrf': self._csrf, 'gift-card': card }
         attempt = 1
@@ -117,9 +119,11 @@ class Client:
             except:
                 attempt += 1
 
+    """ Concurrently redeems the specified list of gift cards. """
     async def redeem_gift_cards(self, cards: list[str]):
         await asyncio.gather(*[self.redeem_gift_card(card) for card in cards])
 
+""" Retrieves the list of gift cards on the checkout response page. """
 async def get_gift_cards(res: aiohttp.ClientResponse):
     soup = BeautifulSoup(await res.content.read(), features='html.parser')
     code_tags = soup.select('table[class=is-table-numbers] > tbody > tr > td')
@@ -144,7 +148,7 @@ async def main():
             print(f'Applying coupon ... ')
             await client.apply_coupon(COUPON_CODE)
             print(f'Purchasing gift cards ... ')
-            res = await client.purchase()
+            res = await client.checkout()
             gift_cards = await get_gift_cards(res)
             print(f'Redeeming {quantity} gift cards ... ')
             await client.redeem_gift_cards(gift_cards)
@@ -155,7 +159,7 @@ async def main():
         print(f'Applying coupon ... ')
         await client.apply_coupon(COUPON_CODE)
         print(f'Purchasing product ... ')
-        await client.purchase()
+        await client.checkout()
         print(f'{Fore.GREEN}Lab should now be solved!{Style.RESET_ALL}')
 
 try:
