@@ -10,7 +10,7 @@ Performs the same process as above, but measures the response times to determine
 
 # Logic flaws
 ### [Infinite money logic flaw](lab/logic-flaws/examples/logic-flaws-infinite-money)
-Automates the process of adding gift cards to your cart, applying the discount coupon, purchasing and redeeming the gift cards until you have enough funds to purchase the target product.
+Automates the process of adding gift cards to your cart, applying the discount coupon, purchasing and redeeming the gift cards until you have enough funds to purchase the target product. Then, it purchases the target product to solve the lab.
 
 # Authentication
 
